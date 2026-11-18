@@ -1,9 +1,9 @@
 # agent-flight-recorder
 
-[![ci](https://github.com/LXP86050/agent-flight-recorder/actions/workflows/ci.yml/badge.svg)](https://github.com/LXP86050/agent-flight-recorder/actions/workflows/ci.yml)
-[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+The `afr` CLI is a local flight recorder for LLM agent runs.
 
-A local flight recorder for LLM agent runs.
+[![ci](https://img.shields.io/github/actions/workflow/status/LXP86050/agent-flight-recorder/ci.yml?branch=main&label=ci&style=flat)](https://github.com/LXP86050/agent-flight-recorder/actions/workflows/ci.yml)
+[![license](https://img.shields.io/github/license/LXP86050/agent-flight-recorder?style=flat)](LICENSE)
 
 An agent bug is usually one step. The model picked a tool, or the code filled in the wrong argument, and everything after that is fallout. By the time you are looking, the model may not say the same thing again and the tools may not return the same data. This library appends every model call, tool call, seed, and error to a tape. Replay serves those responses back, so the failed run can happen again. Diff shows the first step where two runs are not the same.
 
