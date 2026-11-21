@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from agent_flight_recorder import Recorder, record_tool
 from agent_flight_recorder.adapters import MockLLM
 from agent_flight_recorder.diff import diff_runs, summary
@@ -128,6 +130,22 @@ def test_diff_names_an_argument_missing_on_one_side() -> None:
     assert swapped.first.detail == (
         "arguments differ (amount_cents: 1500 -> 4200, note: <missing> -> None)"
     )
+
+
+def test_diff_shows_the_exception_that_sealed_the_run(tmp_path: Path) -> None:
+    runs: list[Run] = []
+    with Recorder(tmp_path) as recorder:
+        for message in ("one", "two"):
+            with pytest.raises(RuntimeError, match=message):
+                with recorder.session("boom") as session:
+                    session.rng(1)
+                    raise RuntimeError(message)
+            runs.append(recorder.store.load(session.run_id))
+    diff = diff_runs(runs[0], runs[1])
+    assert diff.first is not None
+    assert diff.first.kind == "output"
+    assert diff.first.left is not None and diff.first.left.kind == "seal"
+    assert diff.first.detail == "output differs (RuntimeError: one -> RuntimeError: two)"
 
 
 def test_diff_reports_input_changes_and_steps_present_on_one_side(tmp_path: Path) -> None:

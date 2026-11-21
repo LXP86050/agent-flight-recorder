@@ -124,7 +124,13 @@ def _arg_changes(left: Any, right: Any) -> list[str]:
 
 
 def _brief(step: Step) -> str:
-    if step.error and step.kind != "seal":
+    if step.kind == "seal":
+        if step.error:
+            return step.error
+        if isinstance(step.input, dict) and step.input.get("status"):
+            return str(step.input["status"])
+        return "null"
+    if step.error:
         return step.error
     if step.kind == "llm" and isinstance(step.output, dict):
         calls = step.output.get("tool_calls") or []
