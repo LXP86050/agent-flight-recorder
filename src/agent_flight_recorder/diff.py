@@ -114,8 +114,12 @@ def _arg_changes(left: Any, right: Any) -> list[str]:
         return []
     changes: list[str] = []
     for key in sorted(set(left_args) | set(right_args)):
-        if left_args.get(key) != right_args.get(key):
-            changes.append(f"{key}: {left_args.get(key)!r} -> {right_args.get(key)!r}")
+        if key not in left_args:
+            changes.append(f"{key}: <missing> -> {right_args[key]!r}")
+        elif key not in right_args:
+            changes.append(f"{key}: {left_args[key]!r} -> <missing>")
+        elif left_args[key] != right_args[key]:
+            changes.append(f"{key}: {left_args[key]!r} -> {right_args[key]!r}")
     return changes
 
 

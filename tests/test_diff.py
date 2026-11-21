@@ -4,7 +4,7 @@ from typing import Any
 from agent_flight_recorder import Recorder, record_tool
 from agent_flight_recorder.adapters import MockLLM
 from agent_flight_recorder.diff import diff_runs, summary
-from agent_flight_recorder.models import Completion, ToolCall
+from agent_flight_recorder.models import Completion, Run, Step, ToolCall
 from agent_flight_recorder.report import diff_html, run_html
 
 flag = {"value": "a"}
@@ -61,6 +61,73 @@ def test_diff_reports_output_and_argument_changes(tmp_path: Path) -> None:
     assert first.run_id in transcript
     assert "&lt;script&gt;" in transcript
     assert "<script>" not in transcript
+
+
+def _step(seq: int, payload: dict[str, Any]) -> Step:
+    return Step(
+        step_id=f"{seq:064d}",
+        run_id="run",
+        seq=seq,
+        kind="tool",
+        name="refund",
+        actor="agent",
+        parents=(),
+        lamport=seq + 1,
+        vc=(("agent", seq + 1),),
+        input=payload,
+        output={"status": "refunded"},
+        error=None,
+        tokens_in=None,
+        tokens_out=None,
+        started_ns=0,
+        duration_ns=0,
+        prev="0" * 64,
+        line_hash="1" * 64,
+    )
+
+
+def _run_of(run_id: str, steps: list[Step]) -> Run:
+    return Run(
+        run_id=run_id,
+        name="refund",
+        entrypoint=None,
+        created_ns=1,
+        replay_of=None,
+        replay_until=None,
+        status="ok",
+        steps=tuple(steps),
+        head="h",
+        intact=True,
+        failure=None,
+    )
+
+
+def test_diff_names_an_argument_missing_on_one_side() -> None:
+    left = _run_of(
+        "a",
+        [
+            _step(
+                0,
+                {"args": {"amount_cents": 4200, "note": None, "order_id": "A184"}},
+            )
+        ],
+    )
+    right = _run_of(
+        "b",
+        [_step(0, {"args": {"amount_cents": 1500, "order_id": "A184"}})],
+    )
+    diff = diff_runs(left, right)
+    assert diff.first is not None
+    assert diff.first.kind == "args"
+    assert diff.first.detail == (
+        "arguments differ (amount_cents: 4200 -> 1500, note: None -> <missing>)"
+    )
+
+    swapped = diff_runs(right, left)
+    assert swapped.first is not None
+    assert swapped.first.detail == (
+        "arguments differ (amount_cents: 1500 -> 4200, note: <missing> -> None)"
+    )
 
 
 def test_diff_reports_input_changes_and_steps_present_on_one_side(tmp_path: Path) -> None:
