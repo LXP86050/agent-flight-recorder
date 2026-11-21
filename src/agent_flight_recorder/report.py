@@ -242,6 +242,8 @@ def _note(step: Step) -> str:
         text = f"seed={step.input.get('seed')}"
     elif step.kind == "seal" and isinstance(step.input, dict):
         text = str(step.input.get("status") or "")
+        if step.error:
+            text = f"{text}: {step.error}" if text else step.error
     if len(text) > 72:
         return text[:69] + "..."
     return text

@@ -244,6 +244,7 @@ class Session:
                 if taped.error:
                     raise RecordedFailure(taped.error)
                 return step
+        started_ns = time.time_ns()
         started = time.monotonic_ns()
         try:
             output, error, tokens_in, tokens_out = call()
@@ -256,7 +257,7 @@ class Session:
                 error=f"{type(exc).__name__}: {exc}",
                 tokens_in=None,
                 tokens_out=None,
-                started_ns=time.time_ns(),
+                started_ns=started_ns,
                 duration_ns=time.monotonic_ns() - started,
             )
             raise
@@ -268,7 +269,7 @@ class Session:
             error=error,
             tokens_in=tokens_in,
             tokens_out=tokens_out,
-            started_ns=time.time_ns(),
+            started_ns=started_ns,
             duration_ns=time.monotonic_ns() - started,
         )
 

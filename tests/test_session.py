@@ -1,5 +1,6 @@
 import random
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -79,6 +80,48 @@ def test_session_records_model_tool_seed_and_plain_calls(tmp_path: Path) -> None
     assert run.steps[1].tokens_in == 4
     assert run.intact
     assert calls == ["off", "ab"]
+
+
+def test_live_step_is_timestamped_when_it_starts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = {"wall": 0, "mono": 0}
+
+    def wall() -> int:
+        clock["wall"] += 1_000
+        return clock["wall"]
+
+    def mono() -> int:
+        clock["mono"] += 1_000
+        return clock["mono"]
+
+    monkeypatch.setattr(time, "time_ns", wall)
+    monkeypatch.setattr(time, "monotonic_ns", mono)
+    seen: dict[str, int] = {}
+
+    def probe() -> dict[str, bool]:
+        seen["inside"] = time.time_ns()
+        return {"ok": True}
+
+    def explode() -> dict[str, bool]:
+        seen["inside"] = time.time_ns()
+        raise RuntimeError("nope")
+
+    with Recorder(tmp_path) as recorder:
+        with recorder.session("time") as session:
+            session.invoke_tool("probe", probe, (), {})
+        step = recorder.store.load(session.run_id).steps[0]
+        assert step.kind == "tool"
+        assert step.started_ns < seen["inside"]
+        assert step.duration_ns > 0
+
+        with pytest.raises(RuntimeError, match="nope"):
+            with recorder.session("time") as session:
+                session.invoke_tool("explode", explode, (), {})
+        failed = next(
+            step for step in recorder.store.load(session.run_id).steps if step.kind == "tool"
+        )
+        assert failed.started_ns < seen["inside"]
 
 
 def test_unknown_tool_is_an_error(tmp_path: Path) -> None:

@@ -78,6 +78,20 @@ def test_cli_lists_shows_diffs_exports_and_replays(
     assert "wrote" in capsys.readouterr().out
 
 
+def test_show_prints_the_exception_that_sealed_the_run(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("COLUMNS", "200")
+    with Recorder(tmp_path) as recorder:
+        with pytest.raises(RuntimeError, match="between steps"):
+            with recorder.session("bare") as session:
+                session.rng(1)
+                raise RuntimeError("between steps")
+        run_id = session.run_id
+    assert main(["--dir", str(tmp_path), "show", run_id]) == 0
+    assert "error: RuntimeError: between steps" in capsys.readouterr().out
+
+
 def test_cli_errors(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as caught:
         main(["--version"])
